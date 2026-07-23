@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Zaranda Rectangular Tecmaq - Control de Calidad</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e24; color: #f5f5f5; margin: 20px; }
+        .container { max-width: 1000px; margin: auto; background: #2a2a35; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1, h2 { color: #00adb5; text-align: center; margin-top: 0; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #333344; padding: 15px; border-radius: 6px; }
+        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
+        select, input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
+        canvas { background: #111; display: block; margin: auto; border: 2px solid #00adb5; border-radius: 6px; }
+        .legend { margin-top: 15px; display: flex; justify-content: space-around; font-size: 13px; background: #333344; padding: 10px; border-radius: 6px; }
+        .color-box { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulador Cinemático Tecmaq</h1>
+    <h2>Módulos de Clasificación de Arenas Tratadas</h2>
+    
+    <div class="controls">
+        <div>
+            <label for="decks">Configuración de Pisos (Tecmaq):</label>
+            <select id="decks" onchange="initSimulation()">
+                <option value="2">2 Pisos (3 Fracciones)</option>
+                <option value="3">3 Pisos (4 Fracciones)</option>
+            </select>
+        </div>
+        <div>
+            <label for="frequency">Frecuencia de Vibración (RPM):</label>
+            <input type="range" id="frequency" min="800" max="1500" value="1150" step="50" oninput="updateFreq(this.value)">
+            <span id="freq-val">1150 RPM</span>
+        </div>
+        <div>
+            <label for="amplitude">Amplitud de Trazo (mm):</label>
+            <input type="range" id="amplitude" min="2" max="8" value="5" step="0.5" oninput="updateAmp(this.value)">
+            <span id="amp-val">5.0 mm</span>
+        </div>
+    </div>
+
+    <canvas id="zarandaCanvas" width="900" height="450"></canvas>
+
+    <div class="legend">
+        <div><span class="color-box" style="background:#ff5722;"></span>Partículas Gruesas (> D60)</div>
+        <div><span class="color-box" style="background:#ffeb3b;"></span>Partículas Medias (Rango Intermedio)</div>
+        <div><span class="color-box" style="background:#00e676;"></span>Arenas Finas (Pasantes Intermedias)</div>
+        <div id="leg-fina"><span class="color-box" style="background:#00b0ff;"></span>Finos / Harinas (&lt; D10)</div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('zarandaCanvas');
+const ctx = canvas.getContext('2d');
+
+let numDecks = 2;
+let rpm = 1150;
+let amplitude = 5;
+let particles = [];
+let animationFrameId;
+let time = 0;
+
+function updateFreq(val) {
+    rpm = val;
+    document.getElementById('freq-val').innerText = val + " RPM";
+}
+
+function updateAmp(val) {
+    amplitude = parseFloat(val);
+    document.getElementById('amp-val').innerText = val + " mm";
+}
+
+class Particle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 7 + 1.5; // Simula granulometría distribuida
+        this.vx = Math.random() * 1.5 + 2;
+        this.vy = 0;
+        this.state = 0; // 0 = Viajando en malla, 1 = Cayendo, 2 = Salida/Fondo
+        this.color = this.assignColor();
+    }
+
+    assignColor() {
+        if (this.size > 6) return '#ff5722';  // Grueso
+        if (this.size > 4) return '#ffeb3b';  // Medio
+        if (this.size > 2.5) return '#00e676'; // Fino
+        return '#00b0ff';                     // Muy fino / Harina
+    }
+
+    update(shakeX, shakeY) {
+        let speedFactor = (rpm / 1200);
+        this.x += this.vx * speedFactor;
+        this.y += this.vy + (shakeY * 0.1);
+
+        // Dinámica cinemática sobre las mallas inclinadas (Inclinación Tecmaq típica 15 grados)
+        let deck1Y = 120 + (this.x - 150) * 0.15 + shakeY;
+        let deck2Y = 200 + (this.x - 150) * 0.15 + shakeY;
+        let deck3Y = 280 + (this.x - 150) * 0.15 + shakeY;
+        let bottomY = 370 + (this.x - 150) * 0.05;
+
+        if (this.x > 150 && this.x < 700) {
+            // Comportamiento en Piso 1
+            if (this.state === 0) {
+                if (this.y >= deck1Y - this.size) {
+                    this.y = deck1Y - this.size;
+                    // Mecanismo de paso por abertura estadística
+                    if (this.size < 5.5 && Math.random() < 0.06) {
+                        this.state = 1; // Pasa la malla 1
+                    }
+                }
+            } 
+            // Comportamiento en Piso 2
+            else if (this.state === 1) {
+                if (this.y >= deck2Y - this.size) {
+                    this.y = deck2Y - this.size;
+                    if (numDecks === 3 && this.size < 3.5 && Math.random() < 0.08) {
+                        this.state = 3; // Pasa la malla 2 (Va a piso 3)
+                    } else if (numDecks === 2 && this.size < 3.5 && Math.random() < 0.08) {
+                        this.state = 2; // Pasa al fondo (Finos directos en 2 pisos)
+                    }
+                } else {
+                    this.vy += 0.2; // Efecto gravedad en caída libre interna
+                }
+            } 
+            // Comportamiento en Piso 3 (Solo si aplica)
+            else if (this.state === 3) {
+                if (this.y >= deck3Y - this.size) {
+                    this.y = deck3Y - this.size;
+                    if (this.size < 2.0 && Math.random() < 0.1) {
+                        this.state = 2; // Pasa al fondo colector
+                    }
+                } else {
+                    this.vy += 0.2;
+                }
+            }
+            // Bandeja de Fondo Colector
+            else if (this.state === 2) {
+                if (this.y >= bottomY - this.size) {
+                    this.y = bottomY - this.size;
+                    this.vy = 0;
+                } else {
+                    this.vy += 0.2;
+                }
+            }
+        } else if (this.x >= 700) {
+            // Fuera de las mallas: Caída limpia hacia las tolvas de salida
+            this.vy += 0.25;
+            if (this.y > 450) {
+                this.x = 100 + Math.random() * 40;
+                this.y = 70;
+                this.vx = Math.random() * 1.5 + 2;
+                this.vy = 0;
+                this.state = 0;
+            }
+        } else {
+            this.vy += 0.1;
+        }
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.closePath();
+    }
+}
+
+function initSimulation() {
+    numDecks = parseInt(document.getElementById('decks').value);
+    document.getElementById('leg-fina').style.display = (numDecks === 3) ? 'block' : 'inline-block';
+    particles = [];
+    for (let i = 0; i < 120; i++) {
+        particles.push(new Particle(100 + Math.random() * 100, 50 + Math.random() * 40));
+    }
+}
+
+function drawZarandaStructure(shakeX, shakeY) {
+    ctx.lineWidth = 4;
+    
+    // Caja vibratoria principal (Cuerpo exterior Tecmaq)
+    ctx.strokeStyle = '#00adb5';
+    ctx.strokeRect(130 + shakeX, 50 + shakeY, 600, 320);
+    
+    // Tolva de Alimentación (Fija)
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.moveTo(80, 40);
+    ctx.lineTo(140 + shakeX, 70 + shakeY);
+    ctx.lineTo(120 + shakeX, 100 + shakeY);
+    ctx.lineTo(70, 70);
+    ctx.fill();
+
+    // Dibujo de Mallas (Líneas discontinuas industriales)
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+
+    // Piso 1
+    ctx.strokeStyle = '#ff5722';
+    ctx.beginPath();
+    ctx.moveTo(150 + shakeX, 120 + shakeY);
+    ctx.lineTo(680 + shakeX, 200 + shakeY);
+    ctx.stroke();
+
+    // Piso 2
+    ctx.strokeStyle = '#ffeb3b';
+    ctx.beginPath();
+    ctx.moveTo(150 + shakeX, 200 + shakeY);
+    ctx.lineTo(680 + shakeX, 280 + shakeY);
+    ctx.stroke();
+
+    // Piso 3 (Si está activo)
+    if (numDecks === 3) {
+        ctx.strokeStyle = '#00e676';
+        ctx.beginPath();
+        ctx.moveTo(150 + shakeX, 280 + shakeY);
+        ctx.lineTo(680 + shakeX, 360 + shakeY);
+        ctx.stroke();
+    }
+
+    // Fondo Colector Limpio
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#777';
+    ctx.beginPath();
+    ctx.moveTo(150 + shakeX, 370 + shakeY);
+    ctx.lineTo(700 + shakeX, 398 + shakeY);
+    ctx.stroke();
+}
+
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    time += (rpm / 60) * 0.05;
+
+    // Ecuación armónica de movimiento elíptico lineal Tecmaq
+    let shakeX = Math.cos(time) * amplitude * 0.8;
+    let shakeY = Math.sin(time) * amplitude * 1.2;
+
+    drawZarandaStructure(shakeX, shakeY);
+
+    // Actualización y renderizado de flujos de partículas de arena
+    particles.forEach(p => {
+        p.update(shakeX, shakeY);
+        p.draw();
+    });
+
+    animationFrameId = requestAnimationFrame(animate);
+}
+
+initSimulation();
+animate();
+</script>
+</body>
+</html>
