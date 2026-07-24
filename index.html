@@ -2,255 +2,427 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Simulador de Zaranda Rectangular Tecmaq - Control de Calidad</title>
+    <title>Panel Profesional 3.0 - Simulador Cinemático GRAVAFILT</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e24; color: #f5f5f5; margin: 20px; }
-        .container { max-width: 1000px; margin: auto; background: #2a2a35; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1, h2 { color: #00adb5; text-align: center; margin-top: 0; }
-        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #333344; padding: 15px; border-radius: 6px; }
-        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
-        select, input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
-        canvas { background: #111; display: block; margin: auto; border: 2px solid #00adb5; border-radius: 6px; }
-        .legend { margin-top: 15px; display: flex; justify-content: space-around; font-size: 13px; background: #333344; padding: 10px; border-radius: 6px; }
-        .color-box { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 5px; }
+        :root {
+            --bg-color: #0f111a;
+            --panel-bg: #1a1c29;
+            --panel-border: #2f334d;
+            --accent: #00adb5;
+            --accent-hover: #00d2df;
+            --text-main: #f5f5f5;
+            --text-muted: #94a3b8;
+            --warning: #ffb703;
+            --danger: #ef476f;
+            --success: #06d6a0;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+        .dashboard-container {
+            max-width: 1280px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+        header h1 { margin: 0; font-size: 22px; color: var(--accent); }
+        header span { font-size: 13px; color: #a5b4fc; background: #222639; padding: 5px 12px; border-radius: 20px; border: 1px solid #3b4267; }
+        
+        /* Panel de Control Lateral */
+        .control-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+        }
+        .control-group label span {
+            color: var(--accent);
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .btn-matrix {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        button.control-btn {
+            background: #252a41;
+            border: 1px solid #3b4267;
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        button.control-btn:hover {
+            background: #313859;
+            border-color: var(--accent);
+        }
+        button.control-btn.active {
+            background: var(--accent);
+            color: #0f111a;
+            border-color: var(--accent-hover);
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            background: #252a41;
+        }
+
+        /* Área Visual / Canvas */
+        .visual-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .canvas-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        canvas {
+            background: #08090e;
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            border: 1px solid #2f334d;
+        }
+        
+        /* Panel Telemetría Inferior */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .telemetry-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .telemetry-card h4 { margin: 0 0 5px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+        .telemetry-card .value { font-size: 20px; font-weight: bold; color: var(--accent); font-family: monospace; }
+        .telemetry-card .unit { font-size: 11px; color: #64748b; }
+
+        .legend-bar {
+            display: flex;
+            justify-content: space-around;
+            background: #22273b;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-top: 15px;
+            border: 1px solid #2f334d;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Simulador Cinemático Tecmaq</h1>
-    <h2>Módulos de Clasificación de Arenas Tratadas</h2>
-    
-    <div class="controls">
-        <div>
-            <label for="decks">Configuración de Pisos (Tecmaq):</label>
-            <select id="decks" onchange="initSimulation()">
-                <option value="2">2 Pisos (3 Fracciones)</option>
-                <option value="3">3 Pisos (4 Fracciones)</option>
-            </select>
+<div class="dashboard-container">
+    <header>
+        <h1>Panel Profesional GRAVAFILT 3.0</h1>
+        <span>Simulación Dinámica &bull; Línea de Alta Producción ZP / ZL</span>
+    </header>
+
+    <!-- Panel Lateral de Control Interactivo -->
+    <div class="control-panel">
+        <div class="control-group">
+            <label>Configuración de Pisos:</label>
+            <div class="btn-matrix">
+                <button class="control-btn" id="btn-2decks" onclick="setDecks(2)">2 Pisos (3 Fracc.)</button>
+                <button class="control-btn active" id="btn-3decks" onclick="setDecks(3)">3 Pisos (ZP903/1053)</button>
+            </div>
         </div>
-        <div>
-            <label for="frequency">Frecuencia de Vibración (RPM):</label>
-            <input type="range" id="frequency" min="800" max="1500" value="1150" step="50" oninput="updateFreq(this.value)">
-            <span id="freq-val">1150 RPM</span>
+
+        <div class="control-group">
+            <label>Estado de Carga Operativa:</label>
+            <div class="btn-matrix">
+                <button class="control-btn" id="load-idle" onclick="setLoadMode('idle')">Marcha Ociosa (0 tn/h)</button>
+                <button class="control-btn active" id="load-full" onclick="setLoadMode('full')">Plena Carga (120 tn/h)</button>
+            </div>
         </div>
-        <div>
-            <label for="amplitude">Amplitud de Trazo (mm):</label>
-            <input type="range" id="amplitude" min="2" max="8" value="5" step="0.5" oninput="updateAmp(this.value)">
-            <span id="amp-val">5.0 mm</span>
+
+        <div class="control-group">
+            <label for="freq-slider">Frecuencia Vibratoria: <span id="lbl-freq">980 RPM</span></label>
+            <input type="range" id="freq-slider" min="800" max="1200" value="980" step="10" oninput="changeFrequency(this.value)">
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748b;">
+                <span>800 RPM (Baja)</span><span>1200 RPM (Alta)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="amp-slider">Amplitud de Trazo: <span id="lbl-amp">6.0 mm</span></label>
+            <input type="range" id="amp-slider" min="3.0" max="9.0" value="6.0" step="0.5" oninput="changeAmplitude(this.value)">
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748b;">
+                <span>3.0 mm (Finos)</span><span>9.0 mm (Gruesos/Grava)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="angle-slider">Ángulo de Inclinación: <span id="lbl-angle">15°</span></label>
+            <input type="range" id="angle-slider" min="8" max="22" value="15" step="1" oninput="changeAngle(this.value)">
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748b;">
+                <span>8° (Alta retención)</span><span>22° (Tránsito Rápido)</span>
+            </div>
         </div>
     </div>
 
-    <canvas id="zarandaCanvas" width="900" height="450"></canvas>
+    <!-- Área de Visualización y Métricas -->
+    <div class="visual-area">
+        <div class="canvas-card">
+            <canvas id="simCanvas" width="920" height="420"></canvas>
+            
+            <div class="legend-bar">
+                <div class="legend-item"><div class="dot" style="background:#ff5722;"></div>Gravas / Bolones (>38mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#ffeb3b;"></div>Grava Media (19-38mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>Arena Gruesa / Media</div>
+                <div class="legend-item"><div class="dot" style="background:#00b0ff;"></div>Arena Fina / Harinas (&lt;2mm)</div>
+            </div>
+        </div>
 
-    <div class="legend">
-        <div><span class="color-box" style="background:#ff5722;"></span>Partículas Gruesas (> D60)</div>
-        <div><span class="color-box" style="background:#ffeb3b;"></span>Partículas Medias (Rango Intermedio)</div>
-        <div><span class="color-box" style="background:#00e676;"></span>Arenas Finas (Pasantes Intermedias)</div>
-        <div id="leg-fina"><span class="color-box" style="background:#00b0ff;"></span>Finos / Harinas (&lt; D10)</div>
+        <!-- Telemetría en Tiempo Real -->
+        <div class="telemetry-grid">
+            <div class="telemetry-card">
+                <h4>Potencia Estimada</h4>
+                <div class="value" id="tel-power">22.0</div>
+                <div class="unit">kW (Motor Trifásico 30 HP)</div>
+            </div>
+            <div class="telemetry-card">
+                <h4>Velocidad de Avance</h4>
+                <div class="value" id="tel-speed">0.45</div>
+                <div class="unit">m/s sobre malla</div>
+            </div>
+            <div class="telemetry-card">
+                <h4>Eficiencia de Cribado</h4>
+                <div class="value" id="tel-efficiency" style="color:var(--success);">94.8%</div>
+                <div class="unit">Calidad de separación</div>
+            </div>
+            <div class="telemetry-card">
+                <h4>Estrato de Lecho</h4>
+                <div class="value" id="tel-stratum">Fluidizado</div>
+                <div class="unit">Estado de estratificación</div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-const canvas = document.getElementById('zarandaCanvas');
+const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
-let numDecks = 2;
-let rpm = 1150;
-let amplitude = 5;
+let configDecks = 3;      
+let loadMode = 'full';    
+let rpm = 980;            
+let amplitude = 6.0;      
+let angleDeg = 15;        
+
 let particles = [];
-let animationFrameId;
 let time = 0;
 
-function updateFreq(val) {
-    rpm = val;
-    document.getElementById('freq-val').innerText = val + " RPM";
+function setDecks(decks) {
+    configDecks = decks;
+    document.getElementById('btn-2decks').classList.toggle('active', decks === 2);
+    document.getElementById('btn-3decks').classList.toggle('active', decks === 3);
+    initParticles();
 }
 
-function updateAmp(val) {
+function setLoadMode(mode) {
+    loadMode = mode;
+    document.getElementById('load-idle').classList.toggle('active', mode === 'idle');
+    document.getElementById('load-full').classList.toggle('active', mode === 'full');
+    initParticles();
+}
+
+function changeFrequency(val) {
+    rpm = parseInt(val);
+    document.getElementById('lbl-freq').innerText = rpm + " RPM";
+}
+
+function changeAmplitude(val) {
     amplitude = parseFloat(val);
-    document.getElementById('amp-val').innerText = val + " mm";
+    document.getElementById('lbl-amp').innerText = amplitude.toFixed(1) + " mm";
 }
 
-class Particle {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.size = Math.random() * 7 + 1.5; // Simula granulometría distribuida
-        this.vx = Math.random() * 1.5 + 2;
+function changeAngle(val) {
+    angleDeg = parseInt(val);
+    document.getElementById('lbl-angle').innerText = angleDeg + "°";
+}
+
+class Granule {
+    constructor() {
+        this.reset();
+    }
+    
+    reset() {
+        this.x = 60 + Math.random() * 40;
+        this.y = 80 + Math.random() * 30;
+        this.size = Math.random() * 8 + 1.2; 
+        this.vx = (Math.random() * 0.8 + 1.2) * (angleDeg / 15);
         this.vy = 0;
-        this.state = 0; // 0 = Viajando en malla, 1 = Cayendo, 2 = Salida/Fondo
-        this.color = this.assignColor();
+        this.deckLevel = 0; 
+        this.color = this.getColor();
     }
 
-    assignColor() {
-        if (this.size > 6) return '#ff5722';  // Grueso
-        if (this.size > 4) return '#ffeb3b';  // Medio
-        if (this.size > 2.5) return '#00e676'; // Fino
-        return '#00b0ff';                     // Muy fino / Harina
+    getColor() {
+        if (this.size > 6.5) return '#ff5722'; 
+        if (this.size > 4.5) return '#ffeb3b'; 
+        if (this.size > 2.5) return '#00e676'; 
+        return '#00b0ff';                     
     }
 
     update(shakeX, shakeY) {
-        let speedFactor = (rpm / 1200);
-        this.x += this.vx * speedFactor;
-        this.y += this.vy + (shakeY * 0.1);
+        if (loadMode === 'idle') return; 
 
-        // Dinámica cinemática sobre las mallas inclinadas (Inclinación Tecmaq típica 15 grados)
-        let deck1Y = 120 + (this.x - 150) * 0.15 + shakeY;
-        let deck2Y = 200 + (this.x - 150) * 0.15 + shakeY;
-        let deck3Y = 280 + (this.x - 150) * 0.15 + shakeY;
-        let bottomY = 370 + (this.x - 150) * 0.05;
+        let angleRad = angleDeg * Math.PI / 180;
+        let speedMult = (rpm / 1000) * (amplitude / 5) * 0.6;
+        
+        this.x += this.vx * speedMult;
+        
+        let baselineY = 130 + (this.x - 80) * Math.sin(angleRad) * 0.8;
+        let deckSpacing = 55;
 
-        if (this.x > 150 && this.x < 700) {
-            // Comportamiento en Piso 1
-            if (this.state === 0) {
-                if (this.y >= deck1Y - this.size) {
-                    this.y = deck1Y - this.size;
-                    // Mecanismo de paso por abertura estadística
-                    if (this.size < 5.5 && Math.random() < 0.06) {
-                        this.state = 1; // Pasa la malla 1
-                    }
-                }
-            } 
-            // Comportamiento en Piso 2
-            else if (this.state === 1) {
-                if (this.y >= deck2Y - this.size) {
-                    this.y = deck2Y - this.size;
-                    if (numDecks === 3 && this.size < 3.5 && Math.random() < 0.08) {
-                        this.state = 3; // Pasa la malla 2 (Va a piso 3)
-                    } else if (numDecks === 2 && this.size < 3.5 && Math.random() < 0.08) {
-                        this.state = 2; // Pasa al fondo (Finos directos en 2 pisos)
-                    }
-                } else {
-                    this.vy += 0.2; // Efecto gravedad en caída libre interna
-                }
-            } 
-            // Comportamiento en Piso 3 (Solo si aplica)
-            else if (this.state === 3) {
-                if (this.y >= deck3Y - this.size) {
-                    this.y = deck3Y - this.size;
-                    if (this.size < 2.0 && Math.random() < 0.1) {
-                        this.state = 2; // Pasa al fondo colector
-                    }
-                } else {
-                    this.vy += 0.2;
-                }
+        if (this.deckLevel === 0 && this.x > 140) {
+            if (this.size > 5.5 && configDecks === 3) {
+                this.deckLevel = 1; 
+            } else {
+                this.deckLevel = 2; 
             }
-            // Bandeja de Fondo Colector
-            else if (this.state === 2) {
-                if (this.y >= bottomY - this.size) {
-                    this.y = bottomY - this.size;
-                    this.vy = 0;
-                } else {
-                    this.vy += 0.2;
-                }
-            }
-        } else if (this.x >= 700) {
-            // Fuera de las mallas: Caída limpia hacia las tolvas de salida
-            this.vy += 0.25;
-            if (this.y > 450) {
-                this.x = 100 + Math.random() * 40;
-                this.y = 70;
-                this.vx = Math.random() * 1.5 + 2;
-                this.vy = 0;
-                this.state = 0;
-            }
-        } else {
-            this.vy += 0.1;
+        } else if (this.deckLevel === 1 && this.x > 450) {
+            this.deckLevel = 4; 
+        } else if (this.deckLevel === 2 && this.x > 550) {
+            this.deckLevel = 4; 
+        }
+
+        let targetY = baselineY + (this.deckLevel * deckSpacing);
+        this.y += (targetY - this.y) * 0.1 + (shakeY * 0.2);
+
+        if (this.x > 880 || this.y > 400) {
+            this.reset();
         }
     }
-
-    draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.closePath();
-    }
 }
 
-function initSimulation() {
-    numDecks = parseInt(document.getElementById('decks').value);
-    document.getElementById('leg-fina').style.display = (numDecks === 3) ? 'block' : 'inline-block';
+function initParticles() {
     particles = [];
-    for (let i = 0; i < 120; i++) {
-        particles.push(new Particle(100 + Math.random() * 100, 50 + Math.random() * 40));
+    let count = (loadMode === 'idle') ? 15 : 120;
+    for (let i = 0; i < count; i++) {
+        let p = new Granule();
+        p.x = 60 + Math.random() * 750; 
+        particles.push(p);
     }
 }
 
-function drawZarandaStructure(shakeX, shakeY) {
-    ctx.lineWidth = 4;
-    
-    // Caja vibratoria principal (Cuerpo exterior Tecmaq)
-    ctx.strokeStyle = '#00adb5';
-    ctx.strokeRect(130 + shakeX, 50 + shakeY, 600, 320);
-    
-    // Tolva de Alimentación (Fija)
-    ctx.fillStyle = '#555';
-    ctx.beginPath();
-    ctx.moveTo(80, 40);
-    ctx.lineTo(140 + shakeX, 70 + shakeY);
-    ctx.lineTo(120 + shakeX, 100 + shakeY);
-    ctx.lineTo(70, 70);
-    ctx.fill();
-
-    // Dibujo de Mallas (Líneas discontinuas industriales)
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 6]);
-
-    // Piso 1
-    ctx.strokeStyle = '#ff5722';
-    ctx.beginPath();
-    ctx.moveTo(150 + shakeX, 120 + shakeY);
-    ctx.lineTo(680 + shakeX, 200 + shakeY);
-    ctx.stroke();
-
-    // Piso 2
-    ctx.strokeStyle = '#ffeb3b';
-    ctx.beginPath();
-    ctx.moveTo(150 + shakeX, 200 + shakeY);
-    ctx.lineTo(680 + shakeX, 280 + shakeY);
-    ctx.stroke();
-
-    // Piso 3 (Si está activo)
-    if (numDecks === 3) {
-        ctx.strokeStyle = '#00e676';
-        ctx.beginPath();
-        ctx.moveTo(150 + shakeX, 280 + shakeY);
-        ctx.lineTo(680 + shakeX, 360 + shakeY);
-        ctx.stroke();
-    }
-
-    // Fondo Colector Limpio
-    ctx.setLineDash([]);
-    ctx.strokeStyle = '#777';
-    ctx.beginPath();
-    ctx.moveTo(150 + shakeX, 370 + shakeY);
-    ctx.lineTo(700 + shakeX, 398 + shakeY);
-    ctx.stroke();
-}
+initParticles();
 
 function animate() {
+    time += 0.15;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    time += (rpm / 60) * 0.05;
 
-    // Ecuación armónica de movimiento elíptico lineal Tecmaq
-    let shakeX = Math.cos(time) * amplitude * 0.8;
-    let shakeY = Math.sin(time) * amplitude * 1.2;
+    let freqRad = rpm * 0.05;
+    let currentAmpFactor = amplitude * 1.5;
+    let shakeX = Math.cos(time * freqRad) * currentAmpFactor;
+    let shakeY = Math.sin(time * freqRad) * currentAmpFactor;
 
-    drawZarandaStructure(shakeX, shakeY);
+    let angleRad = angleDeg * Math.PI / 180;
 
-    // Actualización y renderizado de flujos de partículas de arena
+    ctx.save();
+    ctx.translate(shakeX * 0.3, shakeY * 0.3);
+
+    let startX = 80;
+    let endX = 840;
+    let deckLength = endX - startX;
+    let rise = deckLength * Math.sin(angleRad) * 0.8;
+
+    ctx.strokeStyle = '#3b4267';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(60, 90, 800, configDecks === 3 ? 210 : 150);
+
+    let decksCount = configDecks;
+    for (let i = 0; i < decksCount; i++) {
+        let yOffset = 130 + (i * 55);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = (i === 0) ? '#ff5722' : (i === 1) ? '#ffeb3b' : '#00e676';
+        ctx.lineWidth = 3;
+        ctx.moveTo(startX, yOffset);
+        ctx.lineTo(endX, yOffset + rise);
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Segoe UI';
+        ctx.fillText(`Piso ${i+1} (${i===0?'Malla Gruesa':i===1?'Malla Media':'Malla Fina'})`, startX + 10, yOffset - 8);
+    }
+
+    ctx.restore();
+
     particles.forEach(p => {
         p.update(shakeX, shakeY);
-        p.draw();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
     });
 
-    animationFrameId = requestAnimationFrame(animate);
+    let basePower = configDecks === 3 ? 22.0 : 15.0; 
+    let loadMultiplier = (loadMode === 'full') ? 1.0 : 0.35; 
+    let dynamicPower = (basePower * (rpm / 1000) * loadMultiplier).toFixed(1);
+    document.getElementById('tel-power').innerText = dynamicPower;
+
+    let computedSpeed = (0.2 + (angleDeg * 0.015) * (rpm / 1000)).toFixed(2);
+    document.getElementById('tel-speed').innerText = computedSpeed + " m/s";
+
+    let efficiency = loadMode === 'idle' ? "100%" : (92.0 + (amplitude * 0.4) - (Math.abs(angleDeg - 15) * 0.3)).toFixed(1) + "%";
+    document.getElementById('tel-efficiency').innerText = efficiency;
+
+    let stratumState = loadMode === 'idle' ? "Ociosa (Sin Lecho)" : (amplitude > 5.5 ? "Fluidizado Óptimo" : "Sobrecarga Parcial");
+    document.getElementById('tel-stratum').innerText = stratumState;
+
+    requestAnimationFrame(animate);
 }
 
-initSimulation();
 animate();
 </script>
+
 </body>
 </html>
