@@ -2,139 +2,284 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GRAVAFILT 3.0 &bull; Ingeniería de Cribado & Matriz Granulométrica</title>
-    <!-- Librería para Exportar a PDF (jsPDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <!-- CLAVE PARA CELULARES: Evita que la pantalla haga zoom raro al tocar botones -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GRAVAFILT 3.0 - Dashboard Móvil</title>
+    <style>
+        :root {
+            --bg-dark: #0b0d14;
+            --panel-bg: #151822;
+            --border-color: #2a2e39;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #00adb5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding: 10px;
+        }
+
+        /* Contenedor principal tipo grilla responsive */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr; /* Por defecto, una sola columna para celulares */
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* En Tablets o PC, se divide en dos columnas */
+        @media(min-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            color: var(--accent);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        /* Áreas táctiles mejoradas para celular */
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 24px; /* Más alto para el dedo */
+            accent-color: var(--accent);
+        }
+
+        input[type="number"] {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 80px;
+            text-align: center;
+        }
+
+        /* Botones de ajuste rápido */
+        .btn-adjust {
+            background: var(--border-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-adjust:active { background: var(--accent); }
+
+        /* Contenedor del Canvas para que no rompa la pantalla */
+        .canvas-container {
+            width: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        canvas {
+            width: 100%; /* Se adapta al ancho disponible */
+            height: auto; /* Mantiene la proporción */
+            display: block;
+        }
+
+        /* Telemetría (Cajas superiores) */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .telemetry-card {
+            background: rgba(0, 173, 181, 0.1);
+            border: 1px solid rgba(0, 173, 181, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .telemetry-card span {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .telemetry-card strong {
+            font-size: 16px;
+            color: var(--accent);
+        }
+
+        /* SOLUCIÓN AL SEMÁFORO: Contenedor con Scroll Horizontal */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Deslizamiento suave en iOS */
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px; /* Fuerza un ancho mínimo para que no se apriete el texto */
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            white-space: nowrap; /* Evita que el texto se rompa en varias líneas */
+        }
+
+        th {
+            background: var(--bg-dark);
+            color: var(--text-muted);
+        }
+
+        .alert-box {
+            background: rgba(255, 87, 34, 0.1);
+            border-left: 4px solid #ff5722;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 
-<div class="dashboard-container" id="report-content">
-    <header>
-        <div>
-            <h1>GRAVAFILT 3.0 &bull; Central de Simulación e Ingeniería de Mallas</h1>
-            <span style="font-size:12px; color:var(--text-muted);">Sincronización Total: Cinemática, Contrapeso, Dinámica De-Blinding y Demanda Comercial</span>
-        </div>
-        <div class="badges">
-            <span class="badge">Zaranda ZP / ZL 360°</span>
-            <span class="badge">Matriz ISO / ASTM</span>
-        </div>
-    </header>
-
-    <!-- PANEL DE CONTROL LATERAL -->
-    <div class="control-panel">
-        <div class="section-title">1. Configuración de Zaranda</div>
+<div class="dashboard-container">
+    
+    <!-- COLUMNA IZQUIERDA: Controles Operativos -->
+    <div class="panel">
+        <h2 class="panel-title">Parámetros Operativos</h2>
+        
         <div class="control-group">
-            <label>Estructura de Pisos:</label>
-            <div class="btn-matrix">
-                <button class="control-btn" id="btn-2decks" onclick="setDecks(2)">2 Pisos (3 Fracc.)</button>
-                <button class="control-btn active" id="btn-3decks" onclick="setDecks(3)">3 Pisos (ZP903)</button>
-            </div>
+            <label>Alimentación <span id="lbl-feed">90 tn/h</span></label>
+            <input type="range" min="0" max="150" value="90" oninput="changeFeedRate(this.value)">
         </div>
 
         <div class="control-group">
-            <label for="feed-slider">Alimentación Bruta: <span id="lbl-feed">90 tn/h</span></label>
-            <input type="range" id="feed-slider" min="10" max="150" value="90" step="5" oninput="changeFeedRate(this.value)">
+            <label>Horas de Proceso <span id="lbl-hours">16 hs/día</span></label>
+            <input type="range" min="4" max="24" value="16" step="1" oninput="changeOperatingHours(this.value)">
         </div>
 
-        <div class="section-title">2. Cinemática & Dinámica de Masas</div>
         <div class="control-group">
-            <label for="freq-slider">Frecuencia Vibración: <span id="lbl-freq">980 RPM</span></label>
-            <input type="range" id="freq-slider" min="800" max="3000" value="980" step="20" oninput="changeFrequency(this.value)">
-        </div>
-        <div class="control-group">
-            <label for="cw-slider">Contrapeso (% Excéntrico): <span id="lbl-cw">80%</span></label>
-            <input type="range" id="cw-slider" min="30" max="100" value="80" step="5" oninput="changeCounterweight(this.value)">
-        </div>
-        <div class="control-group">
-            <label for="amp-slider">Amplitud de Trazo: <span id="lbl-amp">6.0 mm</span></label>
-            <input type="range" id="amp-slider" min="1.0" max="9.0" value="6.0" step="0.5" oninput="changeAmplitude(this.value)">
-        </div>
-        <div class="control-group">
-            <label for="angle-slider">Ángulo Inclinación: <span id="lbl-angle">15°</span></label>
-            <input type="range" id="angle-slider" min="0" max="22" value="15" step="1" oninput="changeAngle(this.value)">
+            <label>Frecuencia Vibratoria <span id="lbl-freq">980 RPM</span></label>
+            <input type="range" min="700" max="3000" value="980" step="10" oninput="changeFrequency(this.value)">
         </div>
 
-        <div class="section-title">3. Demanda de Ventas (tn/mes - Rango 10 en 10)</div>
-        <div id="demand-controls-container" style="display:flex; flex-direction:column; gap:12px;">
-            <!-- Se inyecta dinámicamente desde app.js con saltos de 10 tn -->
+        <div class="control-group">
+            <label>Contrapeso Dinámico <span id="lbl-cw">80%</span></label>
+            <input type="range" min="30" max="100" value="80" oninput="changeCounterweight(this.value)">
         </div>
 
-        <div class="control-group" style="margin-top:15px; display:flex; gap:8px;">
-            <button class="btn-action" style="flex:1;" onclick="registerHistoryEntry()">Registrar Historial</button>
-            <button class="btn-pdf" style="flex:1;" onclick="exportToPDF()">Exportar PDF</button>
+        <div class="control-group">
+            <label>Amplitud <span id="lbl-amp">6.0 mm</span></label>
+            <input type="range" min="1.0" max="12.0" value="6.0" step="0.1" oninput="changeAmplitude(this.value)">
+        </div>
+
+        <div class="control-group">
+            <label>Inclinación Decks <span id="lbl-angle">15°</span></label>
+            <input type="range" min="0" max="25" value="15" oninput="changeAngle(this.value)">
+        </div>
+
+        <h2 class="panel-title" style="margin-top: 20px;">Expectativa Comercial (Demanda)</h2>
+        <div id="demand-controls-container">
+            <!-- JS inyectará los controles de demanda aquí -->
         </div>
     </div>
 
-    <!-- ÁREA VISUAL & MICROSITIO DE ANÁLISIS -->
-    <div class="visual-area">
-        <div class="canvas-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; font-size:14px; color:var(--accent);">Emulación Cinemática 360° en Tiempo Real (De-Blinding)</h3>
-                <span id="mesh-status-indicator" style="font-size:11px; color:var(--success);">Estado de Mallas: Óptimo</span>
-            </div>
-            <div class="canvas-container">
-                <canvas id="simCanvas" width="920" height="420"></canvas>
-            </div>
-            
-            <div class="legend-bar">
-                <div class="legend-item"><div class="dot" style="background:#ff5722;"></div>Gravas / Gruesos (&gt;4mm)</div>
-                <div class="legend-item"><div class="dot" style="background:#ffeb3b;"></div>Grava Media (1-4mm)</div>
-                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>Arena Estándar (0.6-1mm)</div>
-                <div class="legend-item"><div class="dot" style="background:#00b0ff;"></div>Finos / Mesh (&lt;0.6mm)</div>
-            </div>
-
-            <div id="fines-alert" class="alert-box"></div>
-        </div>
-
-        <!-- Micrositio Interactivo de Balance -->
-        <div class="microsite-grid">
-            <div class="micro-card" style="grid-column: 1 / -1;">
-                <h3>Matriz Normada y Balance Comercial por Granulometría</h3>
-                <div style="max-height: 280px; overflow-y: auto;">
-                    <table class="table-data" id="demand-balance-table">
-                        <!-- Tabla generada dinámicamente -->
-                    </table>
-                </div>
-            </div>
-
-            <div class="micro-card" style="grid-column: 1 / -1;">
-                <h3>Registro de Historial de Simulaciones</h3>
-                <div style="max-height: 140px; overflow-y: auto;">
-                    <table class="table-data" id="history-table">
-                        <tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Telemetría Inferior -->
+    <!-- COLUMNA DERECHA: Visualización y Semáforos -->
+    <div class="panel">
+        
+        <!-- Telemetría -->
         <div class="telemetry-grid">
             <div class="telemetry-card">
-                <h4>Potencia Consumida</h4>
-                <div class="value" id="tel-power">21.5</div>
-                <div class="unit">kW (Motor Trifásico)</div>
+                <span>Potencia Est.</span>
+                <strong id="tel-power">-- kW</strong>
             </div>
             <div class="telemetry-card">
-                <h4>Velocidad de Avance</h4>
-                <div class="value" id="tel-speed">0.45</div>
-                <div class="unit">m/s sobre malla</div>
+                <span>Eficiencia Criba</span>
+                <strong id="tel-efficiency">-- %</strong>
             </div>
             <div class="telemetry-card">
-                <h4>Eficiencia de Cribado</h4>
-                <div class="value" id="tel-efficiency" style="color:var(--success);">94.8%</div>
-                <div class="unit">Separación Efectiva</div>
+                <span>Vel. Material</span>
+                <strong id="tel-speed">-- m/s</strong>
             </div>
             <div class="telemetry-card">
-                <h4>Rendimiento Global</h4>
-                <div class="value" id="tel-global">98.2%</div>
-                <div class="unit">vs. Demanda Comercial</div>
+                <span>Volumen Diario</span>
+                <strong id="tel-volume">-- tn/día</strong>
             </div>
         </div>
+
+        <div id="fines-alert" class="alert-box"></div>
+
+        <!-- Canvas -->
+        <div class="canvas-container">
+            <!-- Es importante que el width/height interno sea grande para la resolución, el CSS se encarga de achicarlo visualmente -->
+            <canvas id="simCanvas" width="900" height="350"></canvas>
+        </div>
+
+        <!-- Panel de Semáforos (Tabla con scroll en móviles) -->
+        <h2 class="panel-title" style="margin-top: 20px;">Cumplimiento y Semáforos de Despacho</h2>
+        <div class="table-responsive">
+            <table id="demand-balance-table">
+                <!-- JS inyectará la tabla aquí -->
+            </table>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: right;">
+            <span style="font-size: 13px; color: var(--text-muted);">Cumplimiento Global: </span>
+            <strong id="tel-global" style="color: var(--accent); font-size: 18px;">--%</strong>
+        </div>
+
+        <button onclick="exportToPDF()" style="width: 100%; margin-top: 20px; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
+            Generar Reporte Operativo PDF
+        </button>
     </div>
+
 </div>
 
+<!-- Cargar librerías externas y lógica -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>
