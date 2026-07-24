@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 
 let configDecks = 3;      
 let feedRate = 90;        
+let operatingHours = 16;  
 let rpm = 980;            
 let amplitude = 6.0;      
 let counterweight = 80;   
@@ -92,6 +93,12 @@ function changeFeedRate(val) {
     updateCalculations();
 }
 
+function changeOperatingHours(val) {
+    operatingHours = parseInt(val);
+    document.getElementById('lbl-hours').innerText = operatingHours + " hs/día";
+    updateCalculations();
+}
+
 function changeFrequency(val) {
     rpm = parseInt(val);
     document.getElementById('lbl-freq').innerText = rpm + " RPM";
@@ -129,6 +136,12 @@ function updateCalculations() {
     if (efficiencyVal < 70) efficiencyVal = 70;
     document.getElementById('tel-efficiency').innerText = efficiencyVal.toFixed(1) + "%";
 
+    let dailyProcessedVolume = feedRate * operatingHours;
+    let volElem = document.getElementById('tel-volume');
+    if(volElem) {
+        volElem.innerText = dailyProcessedVolume.toLocaleString() + " tn/día";
+    }
+
     let alertBox = document.getElementById('fines-alert');
     if (rpm > 2200 && counterweight > 60) {
         alertBox.style.display = "block";
@@ -137,20 +150,43 @@ function updateCalculations() {
         alertBox.style.display = "none";
     }
 
-    let balanceHtml = `<tr><th>Granulometría</th><th>Pisos</th><th>RPM / CW</th><th>Demanda (tn)</th><th>Producción (tn)</th><th>Criterio Técnico / Ajuste</th></tr>`;
+    let balanceHtml = `<tr>
+        <th>Estado</th>
+        <th>Granulometría</th>
+        <th>Pisos</th>
+        <th>Demanda (tn)</th>
+        <th>Prod. Real (${operatingHours}h)</th>
+        <th>Cumplimiento</th>
+    </tr>`;
+    
     let totalDemand = 0, totalProd = 0;
 
     productMatrix.forEach(p => {
-        let prod = Math.round(p.demand * (feedRate / 90) * (efficiencyVal / 100));
+        let prod = Math.round(p.demand * (feedRate / 90) * (efficiencyVal / 100) * (operatingHours / 16));
         totalDemand += p.demand;
         totalProd += prod;
+
+        let ratio = p.demand > 0 ? (prod / p.demand) : 1;
+        let statusColor = '#00e676'; // Verde por defecto
+        let statusText = 'Óptimo';
+
+        if (ratio < 0.85) {
+            statusColor = '#ff5722'; // Rojo crítico
+            statusText = 'Déficit';
+        } else if (ratio < 1.0) {
+            statusColor = '#ffeb3b'; // Amarillo alerta
+            statusText = 'Justo';
+        }
+
         balanceHtml += `<tr>
+            <td style="text-align: center;">
+                <span title="${statusText} (${(ratio*100).toFixed(0)}%)" style="height: 12px; width: 12px; background-color: ${statusColor}; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px ${statusColor};"></span>
+            </td>
             <td><strong>${p.name}</strong></td>
             <td>Piso ${p.deck}</td>
-            <td>${p.minRpm}-${p.maxRpm} RPM / ${p.minCw}-${p.maxCw}%</td>
             <td>${p.demand}</td>
             <td>${prod}</td>
-            <td style="font-size:10px; color:var(--text-muted);">${p.desc}</td>
+            <td><span style="color: ${statusColor}; font-weight: bold;">${(ratio * 100).toFixed(0)}%</span></td>
         </tr>`;
     });
     
@@ -220,12 +256,12 @@ function registerHistoryEntry() {
     let timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
     let eff = document.getElementById('tel-efficiency').innerText;
     
-    simulationHistory.unshift({ time: timeStr, feed: feedRate, rpm: rpm, cw: counterweight, eff: eff });
+    simulationHistory.unshift({ time: timeStr, feed: feedRate, hours: operatingHours, rpm: rpm, cw: counterweight, eff: eff });
     if(simulationHistory.length > 5) simulationHistory.pop();
 
-    let historyHTML = `<tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>`;
+    let historyHTML = `<tr><th>Hora</th><th>Feed (tn/h)</th><th>Hs/Día</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>`;
     simulationHistory.forEach(h => {
-        historyHTML += `<tr><td>${h.time}</td><td>${h.feed}</td><td>${h.rpm}</td><td>${h.cw}%</td><td>${h.eff}</td></tr>`;
+        historyHTML += `<tr><td>${h.time}</td><td>${h.feed}</td><td>${h.hours}h</td><td>${h.rpm}</td><td>${h.cw}%</td><td>${h.eff}</td></tr>`;
     });
     let histElem = document.getElementById('history-table');
     if(histElem) histElem.innerHTML = historyHTML;
@@ -240,26 +276,28 @@ function exportToPDF() {
     
     doc.setTextColor(0, 173, 181);
     doc.setFontSize(16);
-    doc.text("GRAVAFILT 3.0 - REPORTE GRANULOMETRICO Y CINEMATICO", 14, 20);
+    doc.text("GRAVAFILT 3.0 - REPORTE DE CUMPLIMIENTO COMERCIAL", 14, 20);
     
     doc.setTextColor(241, 245, 249);
     doc.setFontSize(10);
     doc.text(`Fecha y Hora: ${new Date().toLocaleString()}`, 14, 28);
-    doc.text(`Alimentacion: ${feedRate} tn/h | Frecuencia: ${rpm} RPM | Contrapeso: ${counterweight}%`, 14, 36);
-    doc.text(`Amplitud: ${amplitude} mm | Inclinacion: ${angleDeg}°`, 14, 44);
+    doc.text(`Alimentacion: ${feedRate} tn/h | Horas de Proceso: ${operatingHours} hs/dia`, 14, 36);
+    doc.text(`Frecuencia: ${rpm} RPM | Contrapeso: ${counterweight}% | Inclinacion: ${angleDeg}°`, 14, 44);
     
     doc.setTextColor(0, 173, 181);
-    doc.text("RESUMEN DE DEMANDA COMERCIAL Y AJUSTES DE ZARANDA", 14, 56);
+    doc.text("BALANCE DE DEMANDA Y NIVEL DE CUMPLIMIENTO POR MALLA", 14, 56);
     doc.setTextColor(241, 245, 249);
     
     let yPos = 64;
     productMatrix.forEach(p => {
+        let prod = Math.round(p.demand * (feedRate / 90) * (operatingHours / 16));
+        let ratio = p.demand > 0 ? ((prod / p.demand) * 100).toFixed(0) : 100;
         if(yPos > 270) { doc.addPage(); yPos = 20; }
-        doc.text(`- ${p.name} (Demanda: ${p.demand} tn) | Ajuste: ${p.desc}`, 14, yPos);
+        doc.text(`- ${p.name} | Demanda: ${p.demand} tn | Prod: ${prod} tn (${ratio}%)`, 14, yPos);
         yPos += 7;
     });
 
-    doc.save("Reporte_Granulometrico_Gravafilt.pdf");
+    doc.save("Reporte_Semaforos_Gravafilt.pdf");
 }
 
 function animate() {
