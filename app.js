@@ -5,23 +5,55 @@ let configDecks = 3;
 let feedRate = 90;        
 let rpm = 980;            
 let amplitude = 6.0;      
+let counterweight = 80;   
 let angleDeg = 15;        
-let matMesh1 = 'hardox';
-let matMesh2 = 'acero_inoxidable';
 
-let demGruesa = 3500;
-let demMedia = 4200;
-let demArena = 8500;
+// Matriz Normada de Comercialización por Granulometría
+const productMatrix = [
+    { id: 'f_finos', name: '200-300 Mesh (Micronizados)', deck: '1-2', minRpm: 1500, maxRpm: 3000, minCw: 30, maxCw: 45, minAmp: 1.2, maxAmp: 2.0, minAng: 0, maxAng: 5, desc: 'Alta frecuencia y baja amplitud. Ultrasónico recomendado.', demand: 1500 },
+    { id: 'f_arenados', name: '14-200 Arenados', deck: '3', minRpm: 1200, maxRpm: 1500, minCw: 50, maxCw: 60, minAmp: 2.5, maxAmp: 3.5, minAng: 12, maxAng: 18, desc: 'Ajuste dictado por el piso fino #200.', demand: 3000 },
+    { id: 'f_06', name: '0.6 mm', deck: '2', minRpm: 1200, maxRpm: 1500, minCw: 50, maxCw: 60, minAmp: 2.5, maxAmp: 3.2, minAng: 10, maxAng: 15, desc: 'Lecho delgado (<15mm). Previene condensación y cegado.', demand: 2000 },
+    { id: 'f_08', name: '0.8 mm', deck: '2', minRpm: 1200, maxRpm: 1500, minCw: 55, maxCw: 65, minAmp: 3.0, maxAmp: 3.8, minAng: 10, maxAng: 15, desc: 'Amplitud media para descalzar granos de 0.75mm.', demand: 2500 },
+    { id: 'f_09', name: '0.9 mm', deck: '2', minRpm: 1200, maxRpm: 1500, minCw: 60, maxCw: 70, minAmp: 3.2, maxAmp: 4.0, minAng: 10, maxAng: 15, desc: 'Ideal mallas Ripple Wave para abrir área útil.', demand: 2200 },
+    { id: 'f_1_2', name: '1 - 2 mm', deck: '2', minRpm: 1000, maxRpm: 1200, minCw: 70, maxCw: 80, minAmp: 4.0, maxAmp: 5.5, minAng: 12, maxAng: 18, desc: 'Energía media-alta para evitar saturar piso de 1mm.', demand: 4000 },
+    { id: 'f_1_3', name: '1 - 3 mm', deck: '2', minRpm: 1000, maxRpm: 1200, minCw: 75, maxCw: 85, minAmp: 4.5, maxAmp: 6.0, minAng: 12, maxAng: 18, desc: 'Sustenta caudales de 40-60 t/h/m2.', demand: 4500 },
+    { id: 'f_2_3', name: '2 - 3 mm', deck: '2', minRpm: 900, maxRpm: 1200, minCw: 80, maxCw: 90, minAmp: 5.0, maxAmp: 6.5, minAng: 15, maxAng: 20, desc: 'Impacto fuerte para desalojar granos angulares.', demand: 3800 },
+    { id: 'f_2_4', name: '2 - 4 mm', deck: '2', minRpm: 900, maxRpm: 1000, minCw: 85, maxCw: 95, minAmp: 6.0, maxAmp: 7.5, minAng: 15, maxAng: 20, desc: 'Alta amplitud para el corte superior de 4mm.', demand: 3200 },
+    { id: 'f_3_6', name: '3 - 6 mm (Gravas)', deck: '2', minRpm: 800, maxRpm: 1000, minCw: 90, maxCw: 100, minAmp: 7.0, maxAmp: 9.0, minAng: 15, maxAng: 22, desc: 'Máxima masa excéntrica para mover capas gruesas (>40mm).', demand: 2800 }
+];
 
 let particles = [];
 let time = 0;
 let simulationHistory = [];
 
+function initDemandControls() {
+    let container = document.getElementById('demand-controls-container');
+    if(!container) return;
+    let html = '';
+    productMatrix.forEach(p => {
+        html += `
+        <div class="control-group">
+            <label for="dem_${p.id}">${p.name}: <span id="lbl_dem_${p.id}">${p.demand} tn</span></label>
+            <input type="range" id="dem_${p.id}" min="0" max="8000" value="${p.demand}" step="10" oninput="updateGranulometryDemand('${p.id}', this.value)">
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+function updateGranulometryDemand(id, val) {
+    let item = productMatrix.find(x => x.id === id);
+    if(item) {
+        item.demand = parseInt(val);
+        document.getElementById(`lbl_dem_${id}`).innerText = item.demand + " tn";
+    }
+    updateCalculations();
+}
+
 function setDecks(decks) {
     configDecks = decks;
     document.getElementById('btn-2decks').classList.toggle('active', decks === 2);
     document.getElementById('btn-3decks').classList.toggle('active', decks === 3);
-    updateMeshSpecs();
+    updateCalculations();
 }
 
 function changeFeedRate(val) {
@@ -43,79 +75,61 @@ function changeAmplitude(val) {
     updateCalculations();
 }
 
+function changeCounterweight(val) {
+    counterweight = parseInt(val);
+    document.getElementById('lbl-cw').innerText = counterweight + "%";
+    updateCalculations();
+}
+
 function changeAngle(val) {
     angleDeg = parseInt(val);
     document.getElementById('lbl-angle').innerText = angleDeg + "°";
     updateCalculations();
 }
 
-function updateDemand() {
-    demGruesa = parseInt(document.getElementById('dem-gruesa').value);
-    demMedia = parseInt(document.getElementById('dem-media').value);
-    demArena = parseInt(document.getElementById('dem-arena').value);
-
-    document.getElementById('lbl-dem-g').innerText = demGruesa + " tn";
-    document.getElementById('lbl-dem-m').innerText = demMedia + " tn";
-    document.getElementById('lbl-dem-a').innerText = demArena + " tn";
-
-    document.getElementById('d-val-g').innerText = demGruesa;
-    document.getElementById('d-val-m').innerText = demMedia;
-    document.getElementById('d-val-a').innerText = demArena;
-
-    updateCalculations();
-}
-
-function updateMeshSpecs() {
-    matMesh1 = document.getElementById('material-mesh-1').value;
-    matMesh2 = document.getElementById('material-mesh-2').value;
-    
-    let tableHTML = `<tr><th>Piso</th><th>Abertura</th><th>Diámetro Hilo</th><th>Vida Útil</th><th>Costo / m²</th></tr>`;
-    
-    let cost1 = 240, cost2 = 180, cost3 = 310;
-    if(matMesh1 === 'poliuretano') cost1 = 420;
-    if(matMesh2 === 'poliuretano') cost3 = 550;
-    if(matMesh2 === 'acero_alto_carbono') { cost2 = 120; cost3 = 190; }
-
-    tableHTML += `<tr><td>Piso 1 (${matMesh1.toUpperCase()})</td><td>38.0 mm</td><td>8.0 mm</td><td>1,400 hrs</td><td>$${cost1} USD</td></tr>`;
-    tableHTML += `<tr><td>Piso 2 (Medio)</td><td>19.0 mm</td><td>4.5 mm</td><td>900 hrs</td><td>$${cost2} USD</td></tr>`;
-    if(configDecks === 3) {
-        tableHTML += `<tr><td>Piso 3 (${matMesh2.toUpperCase()})</td><td>2.0 mm</td><td>1.2 mm</td><td>650 hrs</td><td>$${cost3} USD</td></tr>`;
-    }
-    document.getElementById('mesh-specs-table').innerHTML = tableHTML;
-    
-    let totalMeshCost = cost1 + cost2 + (configDecks === 3 ? cost3 : 0);
-    document.getElementById('cb-cost').innerText = `$${totalMeshCost * 3} USD`;
-}
-
 function updateCalculations() {
-    let basePower = configDecks === 3 ? 22.0 : 15.0; 
-    let loadFactor = 0.35 + (feedRate / 150) * 0.65;
-    let dynamicPower = (basePower * (rpm / 1000) * loadFactor).toFixed(1);
+    let basePower = configDecks === 3 ? 24.0 : 16.0; 
+    let loadFactor = 0.4 + (feedRate / 150) * 0.6;
+    let dynamicPower = (basePower * (rpm / 1000) * (counterweight / 80) * loadFactor).toFixed(1);
     document.getElementById('tel-power').innerText = dynamicPower;
 
-    let computedSpeed = (0.2 + (angleDeg * 0.015) * (rpm / 1000) * (1 - (feedRate / 300))).toFixed(2);
+    let computedSpeed = (0.2 + (angleDeg * 0.015) * (rpm / 1000) * (counterweight / 100)).toFixed(2);
     document.getElementById('tel-speed').innerText = computedSpeed + " m/s";
 
-    let efficiencyVal = 100 - Math.abs(feedRate - 90) * 0.1 - Math.abs(angleDeg - 15) * 0.2;
-    if (efficiencyVal < 65) efficiencyVal = 65;
+    let efficiencyVal = 95.0 - Math.abs(feedRate - 90) * 0.08;
+    if (efficiencyVal < 70) efficiencyVal = 70;
     document.getElementById('tel-efficiency').innerText = efficiencyVal.toFixed(1) + "%";
 
-    let finesAlert = document.getElementById('fines-alert');
-    if (angleDeg > 19 || rpm > 1120) {
-        finesAlert.style.display = "block";
+    let alertBox = document.getElementById('fines-alert');
+    if (rpm > 2200 && counterweight > 60) {
+        alertBox.style.display = "block";
+        alertBox.innerHTML = "⚠️ <strong>Alerta Dinámica:</strong> Exceso de contrapeso para alta frecuencia. Las partículas finas pueden 'volar' sin tocar las mallas de 200-300 Mesh.";
     } else {
-        finesAlert.style.display = "none";
+        alertBox.style.display = "none";
     }
 
-    let prodG = Math.round(demGruesa * (feedRate / 90) * (efficiencyVal / 100));
-    let prodM = Math.round(demMedia * (feedRate / 90) * (efficiencyVal / 100));
-    let prodA = Math.round(demArena * (feedRate / 90) * (efficiencyVal / 100));
+    // Actualizar tabla de balance comercial y operacional por granulometría
+    let balanceHtml = `<tr><th>Granulometría</th><th>Pisos</th><th>RPM / CW</th><th>Demanda (tn)</th><th>Producción (tn)</th><th>Criterio Técnico / Ajuste</th></tr>`;
+    let totalDemand = 0, totalProd = 0;
 
-    document.getElementById('p-val-g').innerText = prodG;
-    document.getElementById('p-val-m').innerText = prodM;
-    document.getElementById('p-val-a').innerText = prodA;
+    productMatrix.forEach(p => {
+        let prod = Math.round(p.demand * (feedRate / 90) * (efficiencyVal / 100));
+        totalDemand += p.demand;
+        totalProd += prod;
+        balanceHtml += `<tr>
+            <td><strong>${p.name}</strong></td>
+            <td>Piso ${p.deck}</td>
+            <td>${p.minRpm}-${p.maxRpm} RPM / ${p.minCw}-${p.maxCw}%</td>
+            <td>${p.demand}</td>
+            <td>${prod}</td>
+            <td style="font-size:10px; color:var(--text-muted);">${p.desc}</td>
+        </tr>`;
+    });
+    
+    let tableElem = document.getElementById('demand-balance-table');
+    if(tableElem) tableElem.innerHTML = balanceHtml;
 
-    let globalPerf = ((prodG + prodM + prodA) / (demGruesa + demMedia + demArena) * 100).toFixed(1);
+    let globalPerf = ((totalProd / (totalDemand || 1)) * 100).toFixed(1);
     document.getElementById('tel-global').innerText = globalPerf + "%";
 }
 
@@ -139,8 +153,7 @@ class Granule {
     update(shakeX, shakeY) {
         if (feedRate === 0) return; 
         let angleRad = angleDeg * Math.PI / 180;
-        let massDragFactor = 1.0 - (feedRate / 250); 
-        let speedMult = (rpm / 1000) * (amplitude / 5) * 0.6 * massDragFactor;
+        let speedMult = (rpm / 1000) * (amplitude / 5) * (counterweight / 80) * 0.5;
         
         this.x += this.vx * speedMult;
         let baselineY = 130 + (this.x - 80) * Math.sin(angleRad) * 0.8;
@@ -179,14 +192,15 @@ function registerHistoryEntry() {
     let timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
     let eff = document.getElementById('tel-efficiency').innerText;
     
-    simulationHistory.unshift({ time: timeStr, feed: feedRate, rpm: rpm, angle: angleDeg, eff: eff });
+    simulationHistory.unshift({ time: timeStr, feed: feedRate, rpm: rpm, cw: counterweight, eff: eff });
     if(simulationHistory.length > 5) simulationHistory.pop();
 
-    let historyHTML = `<tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Incli.</th><th>Eficiencia</th></tr>`;
+    let historyHTML = `<tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>`;
     simulationHistory.forEach(h => {
-        historyHTML += `<tr><td>${h.time}</td><td>${h.feed}</td><td>${h.rpm}</td><td>${h.angle}°</td><td>${h.eff}</td></tr>`;
+        historyHTML += `<tr><td>${h.time}</td><td>${h.feed}</td><td>${h.rpm}</td><td>${h.cw}%</td><td>${h.eff}</td></tr>`;
     });
-    document.getElementById('history-table').innerHTML = historyHTML;
+    let histElem = document.getElementById('history-table');
+    if(histElem) histElem.innerHTML = historyHTML;
 }
 
 function exportToPDF() {
@@ -197,33 +211,27 @@ function exportToPDF() {
     doc.rect(0, 0, 210, 297, "F");
     
     doc.setTextColor(0, 173, 181);
-    doc.setFontSize(18);
-    doc.text("GRAVAFILT 3.0 - REPORTE DE INGENIERIA DE ZARANDA", 14, 20);
+    doc.setFontSize(16);
+    doc.text("GRAVAFILT 3.0 - REPORTE GRANULOMETRICO Y CINEMATICO", 14, 20);
     
     doc.setTextColor(241, 245, 249);
-    doc.setFontSize(11);
-    doc.text(`Fecha y Hora: ${new Date().toLocaleString()}`, 14, 30);
-    doc.text(`Configuracion de Pisos: ${configDecks} Pisos`, 14, 38);
-    doc.text(`Alimentacion Bruta: ${feedRate} tn/h`, 14, 46);
-    doc.text(`Frecuencia de Vibracion: ${rpm} RPM`, 14, 54);
-    doc.text(`Amplitud de Trazo: ${amplitude} mm`, 14, 62);
-    doc.text(`Angulo de Inclinacion: ${angleDeg}°`, 14, 70);
+    doc.setFontSize(10);
+    doc.text(`Fecha y Hora: ${new Date().toLocaleString()}`, 14, 28);
+    doc.text(`Alimentacion: ${feedRate} tn/h | Frecuencia: ${rpm} RPM | Contrapeso: ${counterweight}%`, 14, 36);
+    doc.text(`Amplitud: ${amplitude} mm | Inclinacion: ${angleDeg}°`, 14, 44);
     
     doc.setTextColor(0, 173, 181);
-    doc.text("BALANCE DE DEMANDA Y PRODUCTIVIDAD", 14, 86);
+    doc.text("RESUMEN DE DEMANDA COMERCIAL Y AJUSTES DE ZARANDA", 14, 56);
     doc.setTextColor(241, 245, 249);
-    doc.text(`Demanda Grava Gruesa: ${demGruesa} tn | Producido: ${document.getElementById('p-val-g').innerText} tn`, 14, 96);
-    doc.text(`Demanda Grava Media: ${demMedia} tn | Producido: ${document.getElementById('p-val-m').innerText} tn`, 14, 104);
-    doc.text(`Demanda Arena Tratada: ${demArena} tn | Producido: ${document.getElementById('p-val-a').innerText} tn`, 14, 112);
+    
+    let yPos = 64;
+    productMatrix.forEach(p => {
+        if(yPos > 270) { doc.addPage(); yPos = 20; }
+        doc.text(`- ${p.name} (Demanda: ${p.demand} tn) | Ajuste: ${p.desc}`, 14, yPos);
+        yPos += 7;
+    });
 
-    doc.setTextColor(0, 173, 181);
-    doc.text("METRICAS DE TELEMETRIA Y EFICIENCIA", 14, 128);
-    doc.setTextColor(241, 245, 249);
-    doc.text(`Potencia Consumida: ${document.getElementById('tel-power').innerText} kW`, 14, 138);
-    doc.text(`Velocidad de Avance: ${document.getElementById('tel-speed').innerText} m/s`, 14, 146);
-    doc.text(`Eficiencia de Separacion: ${document.getElementById('tel-efficiency').innerText}`, 14, 154);
-
-    doc.save("Reporte_Gravafilt_Zaranda.pdf");
+    doc.save("Reporte_Granulometrico_Gravafilt.pdf");
 }
 
 function animate() {
@@ -231,10 +239,9 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     let freqRad = rpm * 0.05;
-    let currentAmpFactor = amplitude * 1.5;
+    let currentAmpFactor = amplitude * (counterweight / 80) * 1.5;
     let shakeX = Math.cos(time * freqRad) * currentAmpFactor;
     let shakeY = Math.sin(time * freqRad) * currentAmpFactor;
-
     let angleRad = angleDeg * Math.PI / 180;
 
     ctx.save();
@@ -249,10 +256,8 @@ function animate() {
     ctx.lineWidth = 4;
     ctx.strokeRect(60, 90, 800, configDecks === 3 ? 210 : 150);
 
-    let decksCount = configDecks;
-    for (let i = 0; i < decksCount; i++) {
+    for (let i = 0; i < configDecks; i++) {
         let yOffset = 130 + (i * 55);
-        
         ctx.beginPath();
         ctx.strokeStyle = (i === 0) ? '#ff5722' : (i === 1) ? '#ffeb3b' : '#00e676';
         ctx.lineWidth = 3;
@@ -262,7 +267,7 @@ function animate() {
 
         ctx.fillStyle = '#94a3b8';
         ctx.font = '11px Segoe UI';
-        ctx.fillText(`Piso ${i+1} (${i===0?matMesh1.toUpperCase():i===1?'Acero Alto Carbono':matMesh2.toUpperCase()})`, startX + 10, yOffset - 8);
+        ctx.fillText(`Piso ${i+1}`, startX + 10, yOffset - 8);
     }
 
     ctx.restore();
@@ -278,6 +283,10 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-initParticles();
-updateMeshSpecs();
-animate();
+// Inicialización de componentes al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    initDemandControls();
+    initParticles();
+    updateCalculations();
+    animate();
+});
