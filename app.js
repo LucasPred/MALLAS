@@ -32,12 +32,12 @@ function initDemandControls() {
     let html = '';
     productMatrix.forEach(p => {
         html += `
-        <div class="control-group">
-            <label for="dem_${p.id}">${p.name}:</label>
+        <div class="control-group" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+            <label for="slider_${p.id}" style="font-size:11px; margin-bottom:4px; display:block;">${p.name}</label>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="range" id="slider_${p.id}" min="0" max="8000" value="${p.demand}" step="10" style="flex:1;" oninput="syncDemand('${p.id}', this.value, 'slider')">
-                <input type="number" id="num_${p.id}" min="0" max="20000" value="${p.demand}" step="10" style="width: 85px; text-align: right;" oninput="syncDemand('${p.id}', this.value, 'num')">
-                <span style="font-size: 11px; color: var(--text-muted);">tn</span>
+                <input type="range" id="slider_${p.id}" min="0" max="10000" value="${p.demand}" step="10" style="flex:1;" oninput="syncDemand('${p.id}', this.value, 'slider')">
+                <input type="number" id="num_${p.id}" min="0" max="50000" value="${p.demand}" step="10" style="width: 90px; padding: 4px 6px; background: #1e222d; border: 1px solid #3b4267; color: #fff; border-radius: 4px; text-align: right; font-size: 12px;" oninput="syncDemand('${p.id}', this.value, 'num')">
+                <span style="font-size: 11px; color: var(--text-muted); min-width: 18px;">tn</span>
             </div>
         </div>`;
     });
@@ -45,7 +45,9 @@ function initDemandControls() {
 }
 
 function syncDemand(id, val, source) {
-    let numericVal = parseInt(val) || 0;
+    let numericVal = parseInt(val);
+    if (isNaN(numericVal)) numericVal = 0;
+    
     let item = productMatrix.find(x => x.id === id);
     if(item) {
         item.demand = numericVal;
