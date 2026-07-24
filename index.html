@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GRAVAFILT 3.0 &bull; Ingeniería de Cribado & Mallas</title>
+    <title>GRAVAFILT 3.0 &bull; Ingeniería de Cribado & Matriz Granulométrica</title>
     <!-- Librería para Exportar a PDF (jsPDF) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -14,15 +14,15 @@
     <header>
         <div>
             <h1>GRAVAFILT 3.0 &bull; Central de Simulación e Ingeniería de Mallas</h1>
-            <span style="font-size:12px; color:var(--text-muted);">Sincronización Total: Cinemática, Demanda Comercial y Costo-Beneficio de Tejidos Metálicos</span>
+            <span style="font-size:12px; color:var(--text-muted);">Sincronización Total: Cinemática, Contrapeso, Dinámica De-Blinding y Demanda Comercial</span>
         </div>
         <div class="badges">
             <span class="badge">Zaranda ZP / ZL 360°</span>
-            <span class="badge">Norma ISO / ASTM Criba</span>
+            <span class="badge">Matriz ISO / ASTM</span>
         </div>
     </header>
 
-    <!-- PANEL DE CONTROL LATERAL & MICROSITIO DE VARIABLES -->
+    <!-- PANEL DE CONTROL LATERAL -->
     <div class="control-panel">
         <div class="section-title">1. Configuración de Zaranda</div>
         <div class="control-group">
@@ -38,63 +38,40 @@
             <input type="range" id="feed-slider" min="10" max="150" value="90" step="5" oninput="changeFeedRate(this.value)">
         </div>
 
-        <div class="section-title">2. Cinemática & Física</div>
+        <div class="section-title">2. Cinemática & Dinámica de Masas</div>
         <div class="control-group">
             <label for="freq-slider">Frecuencia Vibración: <span id="lbl-freq">980 RPM</span></label>
-            <input type="range" id="freq-slider" min="800" max="1200" value="980" step="10" oninput="changeFrequency(this.value)">
+            <input type="range" id="freq-slider" min="800" max="3000" value="980" step="20" oninput="changeFrequency(this.value)">
+        </div>
+        <div class="control-group">
+            <label for="cw-slider">Contrapeso (% Excéntrico): <span id="lbl-cw">80%</span></label>
+            <input type="range" id="cw-slider" min="30" max="100" value="80" step="5" oninput="changeCounterweight(this.value)">
         </div>
         <div class="control-group">
             <label for="amp-slider">Amplitud de Trazo: <span id="lbl-amp">6.0 mm</span></label>
-            <input type="range" id="amp-slider" min="3.0" max="9.0" value="6.0" step="0.5" oninput="changeAmplitude(this.value)">
+            <input type="range" id="amp-slider" min="1.0" max="9.0" value="6.0" step="0.5" oninput="changeAmplitude(this.value)">
         </div>
         <div class="control-group">
             <label for="angle-slider">Ángulo Inclinación: <span id="lbl-angle">15°</span></label>
-            <input type="range" id="angle-slider" min="8" max="22" value="15" step="1" oninput="changeAngle(this.value)">
+            <input type="range" id="angle-slider" min="0" max="22" value="15" step="1" oninput="changeAngle(this.value)">
         </div>
 
-        <div class="section-title">3. Demanda de Ventas (tn/mes)</div>
-        <div class="control-group">
-            <label for="dem-gruesa">Demanda Grava Gruesa (>38mm): <span id="lbl-dem-g">3500 tn</span></label>
-            <input type="range" id="dem-gruesa" min="500" max="6000" value="3500" step="100" oninput="updateDemand()">
-        </div>
-        <div class="control-group">
-            <label for="dem-media">Demanda Grava Media (19-38mm): <span id="lbl-dem-m">4200 tn</span></label>
-            <input type="range" id="dem-media" min="500" max="6000" value="4200" step="100" oninput="updateDemand()">
-        </div>
-        <div class="control-group">
-            <label for="dem-arena">Demanda Arena Tratada: <span id="lbl-dem-a">8500 tn</span></label>
-            <input type="range" id="dem-arena" min="1000" max="12000" value="8500" step="200" oninput="updateDemand()">
+        <div class="section-title">3. Demanda de Ventas (tn/mes - Rango 10 en 10)</div>
+        <div id="demand-controls-container" style="display:flex; flex-direction:column; gap:12px;">
+            <!-- Se inyecta dinámicamente desde app.js con saltos de 10 tn -->
         </div>
 
-        <div class="section-title">4. Metalurgia de Mallas & Segmentación</div>
-        <div class="control-group">
-            <label for="material-mesh-1">Material Piso 1 (Alto Impacto / Grava):</label>
-            <select id="material-mesh-1" onchange="updateMeshSpecs()">
-                <option value="hardox">Acero Antidesgaste Hardox 450 (Alta Durabilidad)</option>
-                <option value="acero_alto_carbono">Acero Alto Carbono SAE 1085 (Estándar)</option>
-                <option value="poliuretano">Poliuretano Modular (Anti-colmatación)</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label for="material-mesh-2">Material Piso 2 & 3 (Arenas / Finos):</label>
-            <select id="material-mesh-2" onchange="updateMeshSpecs()">
-                <option value="acero_inoxidable">Acero Inoxidable AISI 304 (Alta Precisión)</option>
-                <option value="acero_alto_carbono">Acero Alto Carbono SAE 1085 (Económico)</option>
-                <option value="poliuretano">Poliuretano Fino (Ranurado)</option>
-            </select>
-        </div>
-
-        <div class="control-group" style="margin-top:10px; display:flex; gap:8px;">
+        <div class="control-group" style="margin-top:15px; display:flex; gap:8px;">
             <button class="btn-action" style="flex:1;" onclick="registerHistoryEntry()">Registrar Historial</button>
             <button class="btn-pdf" style="flex:1;" onclick="exportToPDF()">Exportar PDF</button>
         </div>
     </div>
 
-    <!-- ÁREA VISUAL & MICROSITIO DE ANÁLISIS SECUNDARIO -->
+    <!-- ÁREA VISUAL & MICROSITIO DE ANÁLISIS -->
     <div class="visual-area">
         <div class="canvas-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; font-size:14px; color:var(--accent);">Emulación Cinemática 360° en Tiempo Real</h3>
+                <h3 style="margin:0; font-size:14px; color:var(--accent);">Emulación Cinemática 360° en Tiempo Real (De-Blinding)</h3>
                 <span id="mesh-status-indicator" style="font-size:11px; color:var(--success);">Estado de Mallas: Óptimo</span>
             </div>
             <div class="canvas-container">
@@ -102,51 +79,31 @@
             </div>
             
             <div class="legend-bar">
-                <div class="legend-item"><div class="dot" style="background:#ff5722;"></div>Gravas / Bolones (>38mm)</div>
-                <div class="legend-item"><div class="dot" style="background:#ffeb3b;"></div>Grava Media (19-38mm)</div>
-                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>Arena Gruesa / Media</div>
-                <div class="legend-item"><div class="dot" style="background:#00b0ff;"></div>Arena Fina / Harinas (&lt;2mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#ff5722;"></div>Gravas / Gruesos (&gt;4mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#ffeb3b;"></div>Grava Media (1-4mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>Arena Estándar (0.6-1mm)</div>
+                <div class="legend-item"><div class="dot" style="background:#00b0ff;"></div>Finos / Mesh (&lt;0.6mm)</div>
             </div>
 
-            <div id="fines-alert" class="alert-box">
-                ⚠️ <strong>Alerta Crítica de Proceso:</strong> Exceso de finos detectado en arenas especiales tratadas por velocidad de avance excesiva o ángulo crítico.
-            </div>
+            <div id="fines-alert" class="alert-box"></div>
         </div>
 
-        <!-- Micrositio Interactivo -->
+        <!-- Micrositio Interactivo de Balance -->
         <div class="microsite-grid">
-            <div class="micro-card">
-                <h3>Especificaciones Técnicas Normadas (ISO / ASTM) <span style="font-size:10px; color:var(--text-muted);" id="mesh-material-tag">Hardox / Acero</span></h3>
-                <table class="table-data" id="mesh-specs-table">
-                    <tr><th>Piso</th><th>Abertura (mm)</th><th>Diámetro Hilo</th><th>Vida Útil Estimada</th><th>Costo / m²</th></tr>
-                </table>
+            <div class="micro-card" style="grid-column: 1 / -1;">
+                <h3>Matriz Normada y Balance Comercial por Granulometría</h3>
+                <div style="max-height: 280px; overflow-y: auto;">
+                    <table class="table-data" id="demand-balance-table">
+                        <!-- Tabla generada dinámicamente -->
+                    </table>
+                </div>
             </div>
 
-            <div class="micro-card">
-                <h3>Análisis Costo-Beneficio de Inversión en Mallas</h3>
-                <table class="table-data">
-                    <tr><th>Indicador Financiero</th><th>Valor Proyectado</th><th>Evaluación Operativa</th></tr>
-                    <tr><td>Costo Mensual de Reposición</td><td id="cb-cost">$4,250 USD</td><td id="cb-eval" style="color:var(--success);">Margen Óptimo</td></tr>
-                    <tr><td>Productividad vs. Demanda</td><td id="cb-prod">94.2%</td><td>Expediciones CUBRIBLE</td></tr>
-                    <tr><td>Impacto por Desgaste Prematuro</td><td id="cb-wear">Bajo ($0)</td><td>Sin rotura de telas</td></tr>
-                </table>
-            </div>
-
-            <div class="micro-card">
-                <h3>Balance de Demanda Comercial vs. Producción</h3>
-                <table class="table-data" id="demand-balance-table">
-                    <tr><th>Fracción Granulométrica</th><th>Demanda (tn)</th><th>Producción Real (tn)</th><th>Estado Comercial</th></tr>
-                    <tr><td>Grava Gruesa (>38mm)</td><td id="d-val-g">3500</td><td id="p-val-g">3620</td><td style="color:var(--success);">Superávit (+3.4%)</td></tr>
-                    <tr><td>Grava Media (19-38mm)</td><td id="d-val-m">4200</td><td id="p-val-m">4150</td><td style="color:var(--warning);">Déficit Leve (-1.1%)</td></tr>
-                    <tr><td>Arena Tratada (<2mm)</td><td id="d-val-a">8500</td><td id="p-val-a">8800</td><td style="color:var(--success);">Cumplimiento Pleno</td></tr>
-                </table>
-            </div>
-
-            <div class="micro-card">
+            <div class="micro-card" style="grid-column: 1 / -1;">
                 <h3>Registro de Historial de Simulaciones</h3>
                 <div style="max-height: 140px; overflow-y: auto;">
                     <table class="table-data" id="history-table">
-                        <tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Incli.</th><th>Eficiencia</th></tr>
+                        <tr><th>Hora</th><th>Feed (tn/h)</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>
                     </table>
                 </div>
             </div>
@@ -157,7 +114,7 @@
             <div class="telemetry-card">
                 <h4>Potencia Consumida</h4>
                 <div class="value" id="tel-power">21.5</div>
-                <div class="unit">kW (Motor Trifásico 30 HP)</div>
+                <div class="unit">kW (Motor Trifásico)</div>
             </div>
             <div class="telemetry-card">
                 <h4>Velocidad de Avance</h4>
@@ -167,12 +124,12 @@
             <div class="telemetry-card">
                 <h4>Eficiencia de Cribado</h4>
                 <div class="value" id="tel-efficiency" style="color:var(--success);">94.8%</div>
-                <div class="unit">Calidad de Separación</div>
+                <div class="unit">Separación Efectiva</div>
             </div>
             <div class="telemetry-card">
                 <h4>Rendimiento Global</h4>
                 <div class="value" id="tel-global">98.2%</div>
-                <div class="unit">vs. Compromiso de Ventas</div>
+                <div class="unit">vs. Demanda Comercial</div>
             </div>
         </div>
     </div>
