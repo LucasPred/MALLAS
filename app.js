@@ -32,12 +32,16 @@ function initDemandControls() {
     let html = '';
     productMatrix.forEach(p => {
         html += `
-        <div class="control-group" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+        <div class="control-group" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px;">
             <label for="slider_${p.id}" style="font-size:11px; margin-bottom:4px; display:block;">${p.name}</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center;">
                 <input type="range" id="slider_${p.id}" min="0" max="10000" value="${p.demand}" step="10" style="flex:1;" oninput="syncDemand('${p.id}', this.value, 'slider')">
-                <input type="number" id="num_${p.id}" min="0" max="50000" value="${p.demand}" step="10" style="width: 90px; padding: 4px 6px; background: #1e222d; border: 1px solid #3b4267; color: #fff; border-radius: 4px; text-align: right; font-size: 12px;" oninput="syncDemand('${p.id}', this.value, 'num')">
-                <span style="font-size: 11px; color: var(--text-muted); min-width: 18px;">tn</span>
+                <input type="number" id="num_${p.id}" min="0" max="50000" value="${p.demand}" step="10" style="width: 75px; padding: 4px; background: #1e222d; border: 1px solid #3b4267; color: #fff; border-radius: 4px; text-align: right; font-size: 11px;" onchange="syncDemand('${p.id}', this.value, 'num')" onblur="syncDemand('${p.id}', this.value, 'num')">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <button type="button" onclick="adjustStep('${p.id}', 100)" style="background:#2a2e39; color:#fff; border:none; border-radius:2px; width:18px; height:14px; font-size:9px; cursor:pointer;">▲</button>
+                    <button type="button" onclick="adjustStep('${p.id}', -100)" style="background:#2a2e39; color:#fff; border:none; border-radius:2px; width:18px; height:14px; font-size:9px; cursor:pointer;">▼</button>
+                </div>
+                <span style="font-size: 10px; color: var(--text-muted); min-width: 14px;">tn</span>
             </div>
         </div>`;
     });
@@ -53,13 +57,25 @@ function syncDemand(id, val, source) {
         item.demand = numericVal;
         if(source === 'slider') {
             let numInput = document.getElementById(`num_${id}`);
-            if(numInput) numInput.value = numericVal;
+            if(numInput && document.activeElement !== numInput) numInput.value = numericVal;
         } else {
             let sliderInput = document.getElementById(`slider_${id}`);
             if(sliderInput) sliderInput.value = numericVal;
         }
     }
     updateCalculations();
+}
+
+function adjustStep(id, amount) {
+    let item = productMatrix.find(x => x.id === id);
+    if(item) {
+        item.demand = Math.max(0, item.demand + amount);
+        let sliderInput = document.getElementById(`slider_${id}`);
+        let numInput = document.getElementById(`num_${id}`);
+        if(sliderInput) sliderInput.value = item.demand;
+        if(numInput) numInput.value = item.demand;
+        updateCalculations();
+    }
 }
 
 function setDecks(decks) {
