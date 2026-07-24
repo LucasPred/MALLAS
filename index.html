@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GRAVAFILT 3.0 - Simulador de Zarandas Industriales</title>
     <style>
         :root {
@@ -23,37 +24,38 @@
         body {
             background-color: var(--bg-dark);
             color: var(--text-main);
-            padding: 20px;
+            padding: 10px;
         }
 
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
+            padding-bottom: 10px;
         }
 
         h1 {
-            font-size: 20px;
+            font-size: 16px;
             color: var(--accent);
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .deck-selector {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .deck-selector button {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             color: var(--text-main);
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 12px;
         }
 
         .deck-selector button.active {
@@ -62,24 +64,25 @@
             color: #fff;
         }
 
+        /* DISEÑO 100% VERTICAL: Una sola columna apilada de arriba hacia abajo */
         .main-container {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 100%;
         }
 
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
+            padding: 12px;
         }
 
         .panel-title {
             font-size: 13px;
             color: var(--accent);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 1px;
             border-bottom: 1px solid var(--border-color);
@@ -87,33 +90,40 @@
         }
 
         .control-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .control-group label {
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             color: var(--text-muted);
         }
 
         input[type="range"] {
             width: 100%;
             accent-color: var(--accent);
+            height: 20px;
         }
 
         .telemetry-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
             margin-bottom: 15px;
+        }
+
+        @media (min-width: 600px) {
+            .telemetry-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
 
         .telemetry-card {
             background: rgba(0, 173, 181, 0.1);
             border: 1px solid rgba(0, 173, 181, 0.3);
-            padding: 12px;
+            padding: 10px;
             border-radius: 6px;
             text-align: center;
         }
@@ -126,7 +136,7 @@
         }
 
         .telemetry-card strong {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--accent);
         }
 
@@ -137,11 +147,13 @@
             overflow: hidden;
             margin-bottom: 15px;
             text-align: center;
+            width: 100%;
         }
 
         canvas {
+            width: 100%;
+            height: auto;
             display: block;
-            margin: 0 auto;
         }
 
         .alert-box {
@@ -149,7 +161,7 @@
             border-left: 4px solid #ff5722;
             padding: 10px;
             margin-bottom: 15px;
-            font-size: 13px;
+            font-size: 12px;
             display: none;
             border-radius: 0 4px 4px 0;
         }
@@ -161,10 +173,10 @@
         }
 
         th, td {
-            padding: 8px 10px;
+            padding: 8px 6px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
-            font-size: 12px;
+            font-size: 11px;
         }
 
         th {
@@ -176,12 +188,13 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 15px;
+            font-size: 14px;
         }
         .btn-export:hover {
             opacity: 0.9;
@@ -191,7 +204,7 @@
 <body>
 
     <header>
-        <h1>GRAVAFILT 3.0 - SIMULADOR INDUSTRIAL</h1>
+        <h1>GRAVAFILT 3.0</h1>
         <div class="deck-selector">
             <button id="btn-2decks" onclick="setDecks(2)">2 Pisos</button>
             <button id="btn-3decks" class="active" onclick="setDecks(3)">3 Pisos</button>
@@ -199,49 +212,8 @@
     </header>
 
     <div class="main-container">
-        <!-- Panel Izquierdo: Controles -->
-        <div>
-            <div class="panel">
-                <div class="panel-title">Parámetros Operativos</div>
-                
-                <div class="control-group">
-                    <label>Alimentación: <span id="lbl-feed">90 tn/h</span></label>
-                    <input type="range" min="0" max="150" value="90" oninput="changeFeedRate(this.value)">
-                </div>
-
-                <div class="control-group">
-                    <label>Horas de Proceso: <span id="lbl-hours">16 hs/día</span></label>
-                    <input type="range" min="4" max="24" value="16" step="1" oninput="changeOperatingHours(this.value)">
-                </div>
-
-                <div class="control-group">
-                    <label>Frecuencia (RPM): <span id="lbl-freq">980 RPM</span></label>
-                    <input type="range" min="700" max="3000" value="980" step="10" oninput="changeFrequency(this.value)">
-                </div>
-
-                <div class="control-group">
-                    <label>Contrapeso Dinámico: <span id="lbl-cw">80%</span></label>
-                    <input type="range" min="30" max="100" value="80" oninput="changeCounterweight(this.value)">
-                </div>
-
-                <div class="control-group">
-                    <label>Amplitud: <span id="lbl-amp">6.0 mm</span></label>
-                    <input type="range" min="1.0" max="12.0" value="6.0" step="0.1" oninput="changeAmplitude(this.value)">
-                </div>
-
-                <div class="control-group">
-                    <label>Inclinación: <span id="lbl-angle">15°</span></label>
-                    <input type="range" min="0" max="25" value="15" oninput="changeAngle(this.value)">
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title">Expectativa de Venta (Demanda tn)</div>
-                <div id="demand-controls-container"></div>
-            </div>
-        </div>
-
-        <!-- Panel Derecho: Visualización y Resultados -->
+        
+        <!-- 1. Visualización Principal (Arriba para destacar el gráfico) -->
         <div>
             <div class="telemetry-grid">
                 <div class="telemetry-card">
@@ -267,26 +239,70 @@
             <div class="canvas-container">
                 <canvas id="simCanvas" width="900" height="350"></canvas>
             </div>
+        </div>
 
-            <div class="panel">
-                <div class="panel-title">Balance de Demanda y Semáforos de Cumplimiento</div>
-                <table id="demand-balance-table"></table>
-                
-                <div style="margin-top: 15px; text-align: right;">
-                    <span style="font-size: 13px; color: var(--text-muted);">Cumplimiento Global: </span>
-                    <strong id="tel-global" style="color: var(--accent); font-size: 18px;">--%</strong>
-                </div>
-
-                <button class="btn-export" onclick="exportToPDF()">Generar Reporte Operativo PDF</button>
+        <!-- 2. Parámetros Operativos (En bloque vertical continuo) -->
+        <div class="panel">
+            <div class="panel-title">Parámetros Operativos</div>
+            
+            <div class="control-group">
+                <label>Alimentación: <span id="lbl-feed">90 tn/h</span></label>
+                <input type="range" min="0" max="150" value="90" oninput="changeFeedRate(this.value)">
             </div>
 
-            <div class="panel">
-                <div class="panel-title">Historial de Simulación y Cambios</div>
-                <table id="history-table">
-                    <tr><th>Hora</th><th>Feed</th><th>Hs</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>
-                </table>
+            <div class="control-group">
+                <label>Horas de Proceso: <span id="lbl-hours">16 hs/día</span></label>
+                <input type="range" min="4" max="24" value="16" step="1" oninput="changeOperatingHours(this.value)">
+            </div>
+
+            <div class="control-group">
+                <label>Frecuencia (RPM): <span id="lbl-freq">980 RPM</span></label>
+                <input type="range" min="700" max="3000" value="980" step="10" oninput="changeFrequency(this.value)">
+            </div>
+
+            <div class="control-group">
+                <label>Contrapeso Dinámico: <span id="lbl-cw">80%</span></label>
+                <input type="range" min="30" max="100" value="80" oninput="changeCounterweight(this.value)">
+            </div>
+
+            <div class="control-group">
+                <label>Amplitud: <span id="lbl-amp">6.0 mm</span></label>
+                <input type="range" min="1.0" max="12.0" value="6.0" step="0.1" oninput="changeAmplitude(this.value)">
+            </div>
+
+            <div class="control-group">
+                <label>Inclinación: <span id="lbl-angle">15°</span></label>
+                <input type="range" min="0" max="25" value="15" oninput="changeAngle(this.value)">
             </div>
         </div>
+
+        <!-- 3. Expectativa de Venta (Demanda) -->
+        <div class="panel">
+            <div class="panel-title">Expectativa de Venta (Demanda tn)</div>
+            <div id="demand-controls-container"></div>
+        </div>
+
+        <!-- 4. Balance y Semáforos -->
+        <div class="panel">
+            <div class="panel-title">Balance de Demanda y Semáforos de Cumplimiento</div>
+            <table id="demand-balance-table"></table>
+            
+            <div style="margin-top: 15px; text-align: right;">
+                <span style="font-size: 13px; color: var(--text-muted);">Cumplimiento Global: </span>
+                <strong id="tel-global" style="color: var(--accent); font-size: 18px;">--%</strong>
+            </div>
+
+            <button class="btn-export" onclick="exportToPDF()">Generar Reporte Operativo PDF</button>
+        </div>
+
+        <!-- 5. Historial -->
+        <div class="panel">
+            <div class="panel-title">Historial de Simulación y Cambios</div>
+            <table id="history-table">
+                <tr><th>Hora</th><th>Feed</th><th>Hs</th><th>RPM</th><th>Contrapeso</th><th>Eficiencia</th></tr>
+            </table>
+        </div>
+
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
