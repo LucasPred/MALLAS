@@ -33,18 +33,29 @@ function initDemandControls() {
     productMatrix.forEach(p => {
         html += `
         <div class="control-group">
-            <label for="dem_${p.id}">${p.name}: <span id="lbl_dem_${p.id}">${p.demand} tn</span></label>
-            <input type="range" id="dem_${p.id}" min="0" max="8000" value="${p.demand}" step="10" oninput="updateGranulometryDemand('${p.id}', this.value)">
+            <label for="dem_${p.id}">${p.name}:</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="range" id="slider_${p.id}" min="0" max="8000" value="${p.demand}" step="10" style="flex:1;" oninput="syncDemand('${p.id}', this.value, 'slider')">
+                <input type="number" id="num_${p.id}" min="0" max="20000" value="${p.demand}" step="10" style="width: 85px; text-align: right;" oninput="syncDemand('${p.id}', this.value, 'num')">
+                <span style="font-size: 11px; color: var(--text-muted);">tn</span>
+            </div>
         </div>`;
     });
     container.innerHTML = html;
 }
 
-function updateGranulometryDemand(id, val) {
+function syncDemand(id, val, source) {
+    let numericVal = parseInt(val) || 0;
     let item = productMatrix.find(x => x.id === id);
     if(item) {
-        item.demand = parseInt(val);
-        document.getElementById(`lbl_dem_${id}`).innerText = item.demand + " tn";
+        item.demand = numericVal;
+        if(source === 'slider') {
+            let numInput = document.getElementById(`num_${id}`);
+            if(numInput) numInput.value = numericVal;
+        } else {
+            let sliderInput = document.getElementById(`slider_${id}`);
+            if(sliderInput) sliderInput.value = numericVal;
+        }
     }
     updateCalculations();
 }
@@ -108,7 +119,6 @@ function updateCalculations() {
         alertBox.style.display = "none";
     }
 
-    // Actualizar tabla de balance comercial y operacional por granulometría
     let balanceHtml = `<tr><th>Granulometría</th><th>Pisos</th><th>RPM / CW</th><th>Demanda (tn)</th><th>Producción (tn)</th><th>Criterio Técnico / Ajuste</th></tr>`;
     let totalDemand = 0, totalProd = 0;
 
@@ -283,7 +293,6 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// Inicialización de componentes al cargar
 window.addEventListener('DOMContentLoaded', () => {
     initDemandControls();
     initParticles();
