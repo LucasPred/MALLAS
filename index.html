@@ -109,8 +109,13 @@
         }
         .btn-matrix {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 8px;
+        }
+        @media (min-width: 500px) {
+            .btn-matrix {
+                grid-template-columns: 1fr 1fr;
+            }
         }
         button.control-btn {
             background: #252a41;
@@ -267,10 +272,10 @@
         </div>
 
         <div class="control-group">
-            <label>Estado de Carga Operativa:</label>
-            <div class="btn-matrix">
-                <button class="control-btn" id="load-idle" onclick="setLoadMode('idle')">Marcha Ociosa (0 tn/h)</button>
-                <button class="control-btn active" id="load-full" onclick="setLoadMode('full')">Plena Carga (120 tn/h)</button>
+            <label for="feed-slider">Alimentación de Material: <span id="lbl-feed">90 tn/h</span></label>
+            <input type="range" id="feed-slider" min="0" max="150" value="90" step="5" oninput="changeFeedRate(this.value)">
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748b;">
+                <span>0 tn/h (Vacío)</span><span>150 tn/h (Saturación)</span>
             </div>
         </div>
 
@@ -299,7 +304,7 @@
         </div>
     </div>
 
-    <!-- Área de Visualización y Métricas -->
+    <!-- Área Visual y Métricas -->
     <div class="visual-area">
         <div class="canvas-card">
             <div class="canvas-container">
@@ -317,9 +322,9 @@
         <!-- Telemetría en Tiempo Real -->
         <div class="telemetry-grid">
             <div class="telemetry-card">
-                <h4>Potencia Estimada</h4>
-                <div class="value" id="tel-power">22.0</div>
-                <div class="unit">kW (Motor 30 HP)</div>
+                <h4>Potencia Consumida</h4>
+                <div class="value" id="tel-power">20.4</div>
+                <div class="unit">kW (Dinámica de Carga)</div>
             </div>
             <div class="telemetry-card">
                 <h4>Velocidad Avance</h4>
@@ -332,9 +337,9 @@
                 <div class="unit">Separación</div>
             </div>
             <div class="telemetry-card">
-                <h4>Estrato de Lecho</h4>
-                <div class="value" id="tel-stratum">Fluidizado</div>
-                <div class="unit">Estratificación</div>
+                <h4>Espesor de Lecho</h4>
+                <div class="value" id="tel-stratum">Normal (Fluido)</div>
+                <div class="unit">Carga volumétrica</div>
             </div>
         </div>
     </div>
@@ -345,7 +350,7 @@ const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
 let configDecks = 3;      
-let loadMode = 'full';    
+let feedRate = 90;        // tn/h iniciales (control deslizable continuo)
 let rpm = 980;            
 let amplitude = 6.0;      
 let angleDeg = 15;        
@@ -357,14 +362,12 @@ function setDecks(decks) {
     configDecks = decks;
     document.getElementById('btn-2decks').classList.toggle('active', decks === 2);
     document.getElementById('btn-3decks').classList.toggle('active', decks === 3);
-    initParticles();
 }
 
-function setLoadMode(mode) {
-    loadMode = mode;
-    document.getElementById('load-idle').classList.toggle('active', mode === 'idle');
-    document.getElementById('load-full').classList.toggle('active', mode === 'full');
-    initParticles();
+function changeFeedRate(val) {
+    feedRate = parseInt(val);
+    document.getElementById('lbl-feed').innerText = feedRate + " tn/h";
+    adjustParticleCount();
 }
 
 function changeFrequency(val) {
@@ -405,10 +408,12 @@ class Granule {
     }
 
     update(shakeX, shakeY) {
-        if (loadMode === 'idle') return; 
+        if (feedRate === 0) return; // Si la alimentación es 0 tn/h, no hay flujo de lecho
 
         let angleRad = angleDeg * Math.PI / 180;
-        let speedMult = (rpm / 1000) * (amplitude / 5) * 0.6;
+        // El tonelaje o masa acumulada densifica el lecho, frenando ligeramente la velocidad de avance horizontal por rozamiento interno
+        let massDragFactor = 1.0 - (feedRate / 250); 
+        let speedMult = (rpm / 1000) * (amplitude / 5) * 0.6 * massDragFactor;
         
         this.x += this.vx * speedMult;
         
@@ -436,14 +441,23 @@ class Granule {
     }
 }
 
-function initParticles() {
-    particles = [];
-    let count = (loadMode === 'idle') ? 15 : 120;
-    for (let i = 0; i < count; i++) {
+function adjustParticleCount() {
+    let targetCount = Math.floor((feedRate / 150) * 160);
+    if (feedRate === 0) targetCount = 10; // Mínima inercia visual
+    
+    while (particles.length < targetCount) {
         let p = new Granule();
-        p.x = 60 + Math.random() * 750; 
+        p.x = 60 + Math.random() * 750;
         particles.push(p);
     }
+    while (particles.length > targetCount) {
+        particles.pop();
+    }
+}
+
+function initParticles() {
+    particles = [];
+    adjustParticleCount();
 }
 
 initParticles();
@@ -497,18 +511,25 @@ function animate() {
         ctx.fill();
     });
 
+    // Cálculos dinámicos de telemetría basados en el tonelaje real (feedRate)
     let basePower = configDecks === 3 ? 22.0 : 15.0; 
-    let loadMultiplier = (loadMode === 'full') ? 1.0 : 0.35; 
-    let dynamicPower = (basePower * (rpm / 1000) * loadMultiplier).toFixed(1);
+    let loadFactor = 0.35 + (feedRate / 150) * 0.65; // Variación continua de consumo eléctrico real según carga volumétrica de material
+    let dynamicPower = (basePower * (rpm / 1000) * loadFactor).toFixed(1);
     document.getElementById('tel-power').innerText = dynamicPower;
 
-    let computedSpeed = (0.2 + (angleDeg * 0.015) * (rpm / 1000)).toFixed(2);
+    let computedSpeed = (0.2 + (angleDeg * 0.015) * (rpm / 1000) * (1 - (feedRate / 300))).toFixed(2);
     document.getElementById('tel-speed').innerText = computedSpeed + " m/s";
 
-    let efficiency = loadMode === 'idle' ? "100%" : (92.0 + (amplitude * 0.4) - (Math.abs(angleDeg - 15) * 0.3)).toFixed(1) + "%";
-    document.getElementById('tel-efficiency').innerText = efficiency;
+    // La eficiencia se resiente por saturación o falta de lecho
+    let efficiencyVal = 100 - Math.abs(feedRate - 90) * 0.12 - Math.abs(amplitude - 6) * 0.8;
+    if (efficiencyVal < 65) efficiencyVal = 65;
+    if (feedRate === 0) efficiencyVal = 100;
+    document.getElementById('tel-efficiency').innerText = efficiencyVal.toFixed(1) + "%";
 
-    let stratumState = loadMode === 'idle' ? "Ociosa (Sin Lecho)" : (amplitude > 5.5 ? "Fluidizado Óptimo" : "Sobrecarga Parcial");
+    let stratumState = "Fluido Óptimo";
+    if (feedRate === 0) stratumState = "Sin Lecho (Vacío)";
+    else if (feedRate > 115) stratumState = "Saturado / Riesgo Colmo";
+    else if (feedRate < 50) stratumState = "Lecho Delgado";
     document.getElementById('tel-stratum').innerText = stratumState;
 
     requestAnimationFrame(animate);
